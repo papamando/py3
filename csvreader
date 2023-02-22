@@ -1,50 +1,18 @@
 import csv
 
-# Define the filenames of the CSV files to parse
-filenames = ['itsm_hardware_export.csv', 'mdm_computer_export.csv', 'mdm_device_export.csv', 'itsm_phone_export.csv', 'abm_export.csv']
+# Create master.csv file and write headers
+with open('master.csv', 'w', newline='') as master_file:
+    master_writer = csv.writer(master_file)
+    master_writer.writerow(['itsm_' + h for h in next(csv.reader(open('itsm_hardware_export.csv')))])
+    master_writer.writerow(['mdm_COMPUTER' + h for h in next(csv.reader(open('mdm_computer_export.csv')))])
 
-# Define the output filename for the master CSV file
-output_filename = 'master.csv'
-
-# Define the headers to prepend for each file
-headers_to_prepend = {
-    'itsm_hardware_export.csv': 'itsm_',
-    'itsm_phone_export.csv': 'itsm_PHONE_',
-    'mdm_computer_export.csv': 'mdm_COMPUTER_',
-    'mdm_device_export.csv': 'mdm_DEVICE_',
-    'abm_export.csv': 'ABM_'
-}
-
-# Define a dictionary to store the asset records, indexed by serial number
-assets = {}
-
-# Loop through each CSV file
-for filename in filenames:
-    with open(filename, 'r') as file:
-        reader = csv.DictReader(file)
-        # Loop through each row in the CSV file
-        for row in reader:
-            # Prepend the header with the appropriate prefix
-            for header in row.keys():
-                if header in headers_to_prepend:
-                    row[headers_to_prepend[header] + header] = row.pop(header)
-            # Get the serial number of the asset
-            serial_number = row.get('Serial Number') or row.get('SERIAL_NO')
-            # If the serial number is not found, skip this row
-            if not serial_number:
-                continue
-            # If the asset has already been added to the dictionary, update the existing record
-            if serial_number in assets:
-                assets[serial_number].update(row)
-            # Otherwise, add the asset to the dictionary
-            else:
-                assets[serial_number] = row
-
-# Write the merged asset records to the output file
-with open(output_filename, 'w', newline='') as file:
-    writer = csv.writer(file)
-    # Write the header row
-    writer.writerow(list(assets.values())[0].keys())
-    # Loop through each asset and write it to the output file
-    for asset in assets.values():
-        writer.writerow(asset.values())
+    # Read each file and add data to master.csv where serial number matches
+    with open('itsm_hardware_export.csv') as itsm_file, open('mdm_computer_export.csv') as mdm_file:
+        itsm_reader = csv.DictReader(itsm_file)
+        mdm_reader = csv.DictReader(mdm_file)
+        for itsm_row in itsm_reader:
+            for mdm_row in mdm_reader:
+                if itsm_row['Serial Number'] == mdm_row['Serial Number']:
+                    master_writer.writerow([itsm_row.get(h, '') for h in itsm_reader.fieldnames] + \
+                        [mdm_row.get(h, '') for h in mdm_reader.fieldnames])
+                    break
