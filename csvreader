@@ -1,0 +1,67 @@
+import csv
+
+# Define the filenames for the input files
+itsm_hardware_filename = "itsm_hardware_export.csv"
+mdm_computer_filename = "mdm_computer_export.csv"
+mdm_device_filename = "mdm_device_export.csv"
+itsm_phone_filename = "itsm_phone_export.csv"
+abm_filename = "abm_export.csv"
+
+# Define the filename for the output file
+output_filename = "confidence_levels.csv"
+
+# Define a dictionary to store the serial numbers we find
+serial_numbers = {}
+
+# Open the itsm_hardware_export file and store its serial numbers in the dictionary
+with open(itsm_hardware_filename, "r") as itsm_hardware_file:
+    itsm_hardware_reader = csv.reader(itsm_hardware_file)
+    next(itsm_hardware_reader) # Skip the header row
+    for row in itsm_hardware_reader:
+        serial_numbers[row[0]] = {"itsm_hardware": row}
+
+# Open the mdm_computer_export file and add its matching serial numbers to the dictionary
+with open(mdm_computer_filename, "r") as mdm_computer_file:
+    mdm_computer_reader = csv.reader(mdm_computer_file)
+    next(mdm_computer_reader) # Skip the header row
+    for row in mdm_computer_reader:
+        serial_number = row[1]
+        if serial_number in serial_numbers:
+            serial_numbers[serial_number]["mdm_computer"] = row
+
+# Open the mdm_device_export file and add its matching serial numbers to the dictionary
+with open(mdm_device_filename, "r") as mdm_device_file:
+    mdm_device_reader = csv.reader(mdm_device_file)
+    next(mdm_device_reader) # Skip the header row
+    for row in mdm_device_reader:
+        serial_number = row[1]
+        if serial_number in serial_numbers:
+            serial_numbers[serial_number]["mdm_device"] = row
+
+# Open the itsm_phone_export file and add its matching serial numbers to the dictionary
+with open(itsm_phone_filename, "r") as itsm_phone_file:
+    itsm_phone_reader = csv.reader(itsm_phone_file)
+    next(itsm_phone_reader) # Skip the header row
+    for row in itsm_phone_reader:
+        serial_number = row[0]
+        if serial_number in serial_numbers:
+            serial_numbers[serial_number]["itsm_phone"] = row
+
+# Open the abm_export file and add its matching serial numbers to the dictionary
+with open(abm_filename, "r") as abm_file:
+    abm_reader = csv.reader(abm_file)
+    next(abm_reader) # Skip the header row
+    for row in abm_reader:
+        serial_number = row[2]
+        if serial_number in serial_numbers:
+            serial_numbers[serial_number]["abm"] = row
+
+# Open the output file and write the header row
+with open(output_filename, "w", newline="") as output_file:
+    output_writer = csv.writer(output_file)
+    output_writer.writerow(["Serial Number", "itsm_hardware", "mdm_computer", "mdm_device", "itsm_phone", "abm"])
+
+    # Write each row to the output file, skipping any rows that don't have data from all input files
+    for serial_number, data in serial_numbers.items():
+        if len(data) == 5:
+            output_writer.writerow([serial_number] + [data[file_type] for file_type in ["itsm_hardware", "mdm_computer", "mdm_device", "itsm_phone", "abm"]])
