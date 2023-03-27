@@ -1,72 +1,51 @@
 import csv
 
-# Read CSVs
-def read_csv(filename):
-    data = []
+# Read CSV files
+def read_csv_file(filename):
     with open(filename, 'r') as file:
-        reader = csv.reader(file)
-        headers = next(reader)
-        for row in reader:
-            data.append(dict(zip(headers, row)))
+        reader = csv.DictReader(file)
+        data = [row for row in reader]
     return data
 
-fs_data = read_csv('fs.csv')
-mdm_data = read_csv('mdm.csv')
-vmw_data = read_csv('vmw.csv')
+# Write CSV file
+def write_csv_file(filename, data, fieldnames):
+    with open(filename, 'w', newline='') as file:
+        writer = csv.DictWriter(file, fieldnames=fieldnames)
+        writer.writeheader()
+        writer.writerows(data)
 
+fs_data = read_csv_file('fs.csv')
+mdm_data = read_csv_file('mdm.csv')
+vm_data = read_csv_file('vm.csv')
+
+# Combine the data
+all_data = fs_data + mdm_data + vm_data
+
+# Find matches and create combined data
 combined_data = []
-
-# Find matches based on 'serialNumber'
-for data in [fs_data, mdm_data, vmw_data]:
-    for row in data[:]:
-        matched = False
-        for other_data in [fs_data, mdm_data, vmw_data]:
-            if data == other_data:
-                continue
-            for other_row in other_data[:]:
-                if row['serialNumber'] == other_row['serialNumber']:
-                    matched = True
-                    row.update(other_row)
-                    row['matchType'] = 'Serial Number'
-                    combined_data.append(row)
-                    data.remove(row)
-                    other_data.remove(other_row)
-                    break
-            if matched:
-                break
-
-# Find matches based on 'assetTag'
-for data in [fs_data, mdm_data, vmw_data]:
-    for row in data[:]:
-        matched = False
-        for other_data in [fs_data, mdm_data, vmw_data]:
-            if data == other_data:
-                continue
-            for other_row in other_data[:]:
-                if row['assetTag'] == other_row['assetTag']:
-                    matched = True
-                    row.update(other_row)
-                    row['matchType'] = 'Asset Tag'
-                    combined_data.append(row)
-                    data.remove(row)
-                    other_data.remove(other_row)
-                    break
-            if matched:
-                break
-
-# Append remaining rows with 'No Match'
-for data in [fs_data, mdm_data, vmw_data]:
-    for row in data:
-        row['matchType'] = 'No Match'
+for row in all_data:
+    match_found = False
+    
+    for combined_row in combined_data:
+        if row['serialNumber'] == combined_row['serialNumber']:
+            match_found = True
+            combined_row.update(row)
+            combined_row['Match Type'] = 'Serial Number'
+            break
+        elif row['assetTag'] == combined_row['assetTag']:
+            match_found = True
+            combined_row.update(row)
+            combined_row['Match Type'] = 'Asset Tag'
+            break
+    
+    if not match_found:
+        row['Match Type'] = 'No Match'
         combined_data.append(row)
 
-# Write to combined.csv
-headers = set()
+# Get all headers from the combined data
+fieldnames = set()
 for row in combined_data:
-    headers.update(row.keys())
+    fieldnames.update(row.keys())
 
-with open('combined.csv', 'w', newline='') as file:
-    writer = csv.DictWriter(file, fieldnames=headers)
-    writer.writeheader()
-    for row in combined_data:
-        writer.writerow(row)
+# Write combined data to CSV
+write_csv_file('combined.csv', combined_data, fieldnames)
