@@ -1,51 +1,69 @@
 import csv
 
-# Read CSV files
-def read_csv_file(filename):
+file1 = "file1.csv"
+file2 = "file2.csv"
+file3 = "file3.csv"
+combined_file = "combined.csv"
+
+def load_csv(filename):
     with open(filename, 'r') as file:
         reader = csv.DictReader(file)
-        data = [row for row in reader]
-    return data
+        rows = [row for row in reader]
+    return rows
 
-# Write CSV file
-def write_csv_file(filename, data, fieldnames):
-    with open(filename, 'w', newline='') as file:
-        writer = csv.DictWriter(file, fieldnames=fieldnames)
-        writer.writeheader()
-        writer.writerows(data)
+file1_data = load_csv(file1)
+file2_data = load_csv(file2)
+file3_data = load_csv(file3)
 
-fs_data = read_csv_file('fs.csv')
-mdm_data = read_csv_file('mdm.csv')
-vm_data = read_csv_file('vm.csv')
+matches = []
 
-# Combine the data
-all_data = fs_data + mdm_data + vm_data
-
-# Find matches and create combined data
-combined_data = []
-for row in all_data:
+for row1 in file1_data:
     match_found = False
-    
-    for combined_row in combined_data:
-        if row['serialNumber'] == combined_row['serialNumber']:
-            match_found = True
-            combined_row.update(row)
-            combined_row['Match Type'] = 'Serial Number'
-            break
-        elif row['assetTag'] == combined_row['assetTag']:
-            match_found = True
-            combined_row.update(row)
-            combined_row['Match Type'] = 'Asset Tag'
-            break
-    
+    for row2 in file2_data:
+        if row1["serialNumber"] == row2["serialNumber"]:
+            for row3 in file3_data:
+                if row1["serialNumber"] == row3["serialNumber"]:
+                    match = {"file1": row1, "file2": row2, "file3": row3, "match_type": "Serial Number"}
+                    matches.append(match)
+                    match_found = True
+                    break
+            if match_found:
+                break
+        elif row1["assetTag"] == row2["assetTag"]:
+            for row3 in file3_data:
+                if row2["serialNumber"] == row3["serialNumber"]:
+                    match = {"file1": row1, "file2": row2, "file3": row3, "match_type": "Asset Tag"}
+                    matches.append(match)
+                    match_found = True
+                    break
+            if match_found:
+                break
     if not match_found:
-        row['Match Type'] = 'No Match'
-        combined_data.append(row)
+        match = {"file1": row1, "match_type": "No Match"}
+        matches.append(match)
 
-# Get all headers from the combined data
-fieldnames = set()
-for row in combined_data:
-    fieldnames.update(row.keys())
+with open(combined_file, "a", newline='') as csvfile:
+    fieldnames = ["serialNumber", "assetTag", "file1_column2", "file1_column3", "file2_column2", "file2_column3", "file3_column2", "file3_column3", "match_type"]
+    writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
+    
+    # write headers if file is empty
+    csvfile.seek(0)
+    first_char = csvfile.read(1)
+    if not first_char:
+        writer.writeheader()
 
-# Write combined data to CSV
-write_csv_file('combined.csv', combined_data, fieldnames)
+    for match in matches:
+        row = {
+            "serialNumber": match["file1"].get("serialNumber", ""),
+            "assetTag": match["file1"].get("assetTag", ""),
+            "file1_column2": match["file1"].get("column2", ""),
+            "file1_column3": match["file1"].get("column3", ""),
+            "file2_column2": match.get("file2", {}).get("column2", ""),
+            "file2_column3": match.get("file2", {}).get("column3", ""),
+            "file3_column2": match.get("file3", {}).get("column2", ""),
+            "file3_column3": match.get("file3", {}).get("column3", ""),
+            "match_type": match["match_type"]
+        }
+        writer.writerow(row)
+
+print(f"Found {len(matches)} matches. Appended to {combined_file}.")
